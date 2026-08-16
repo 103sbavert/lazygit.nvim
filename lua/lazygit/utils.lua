@@ -3,9 +3,16 @@ local fn = vim.fn
 -- store all git repositories visited in this session
 local lazygit_visited_git_repos = {}
 
--- TODO:check if the repo isa git repo
+local function is_in_git_repo(path)
+  local clean_path = vim.fs.normalize(path)
+
+  local git_root = vim.fs.root(clean_path, ".git")
+
+  return git_root ~= nil
+end
+
 local function append_git_repo_path(repo_path)
-  if repo_path == nil or not fn.isdirectory(repo_path) then
+  if not repo_path or not is_in_git_repo(repo_path) then
     return
   end
 
