@@ -18,28 +18,26 @@ local function append_git_repo_path(repo_path)
   table.insert(lazygit_visited_git_repos, tostring(repo_path))
 end
 
-
 --- Strip leading and lagging whitespace
 local function trim(str)
-  return str:gsub('^%s+', ''):gsub('%s+$', '')
+  return str:gsub("^%s+", ""):gsub("%s+$", "")
 end
 
-
 local function get_root(cwd)
-  local status, job = pcall(require, 'plenary.job')
+  local status, job = pcall(require, "plenary.job")
   if not status then
-    return trim(fn.system('git -C ' .. cwd .. ' rev-parse --show-toplevel'))
+    return trim(fn.system("git -C " .. cwd .. " rev-parse --show-toplevel"))
   end
 
   local gitroot_job = job:new({
-    'git',
-    'rev-parse',
-    '--show-toplevel',
-    cwd=cwd
+    "git",
+    "rev-parse",
+    "--show-toplevel",
+    cwd = cwd,
   })
 
   local path, code = gitroot_job:sync()
-  if (code ~= 0) then
+  if code ~= 0 then
     return nil
   end
 
@@ -49,12 +47,12 @@ end
 --- Get project_root_dir for git repository
 local function project_root_dir()
   local oldshell = vim.o.shell
-  if vim.fn.has('win32') == 0 then
+  if vim.fn.has("win32") == 0 then
     -- always use bash on Unix based systems.
-    vim.o.shell = 'bash'
+    vim.o.shell = "bash"
   else
     -- always use cmd on Windows systems.
-    vim.o.shell = 'cmd'
+    vim.o.shell = "cmd"
   end
 
   local cwd = (vim.uv or vim.loop).cwd()
@@ -64,10 +62,14 @@ local function project_root_dir()
     return nil
   end
 
-  local cmd = string.format('cd "%s" && git rev-parse --show-toplevel', fn.fnamemodify(fn.resolve(fn.expand('%:p')), ':h'), root)
+  local cmd = string.format(
+    "cd \"%s\" && git rev-parse --show-toplevel",
+    fn.fnamemodify(fn.resolve(fn.expand("%:p")), ":h"),
+    root
+  )
   -- try symlinked file location instead
   local gitdir = fn.system(cmd)
-  local isgitdir = fn.matchstr(gitdir, '^fatal:.*') == ''
+  local isgitdir = fn.matchstr(gitdir, "^fatal:.*") == ""
 
   if isgitdir then
     vim.o.shell = oldshell
@@ -87,12 +89,12 @@ end
 
 --- Check if lazygit is available
 local function is_lazygit_available()
-  return fn.executable('lazygit') == 1
+  return fn.executable("lazygit") == 1
 end
 
 local function is_symlink()
-  local resolved = fn.resolve(fn.expand('%:p'))
-  return resolved ~= fn.expand('%:p')
+  local resolved = fn.resolve(fn.expand("%:p"))
+  return resolved ~= fn.expand("%:p")
 end
 
 local function open_or_create_config(path)
