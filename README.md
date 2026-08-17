@@ -1,27 +1,24 @@
 # lazygit.nvim
 
-Plugin for calling [lazygit](https://github.com/jesseduffield/lazygit) from within neovim.
+NeoVim plugin for showing [lazygit](https://github.com/jesseduffield/lazygit) in a floating terminal window from
+within NeoVim.
 
-![](https://user-images.githubusercontent.com/1813121/87866391-79fcfe00-c93e-11ea-94a9-204947de1b39.gif)
+A fork of [Kdheepak's plugin](https://github.com/kdheepak/lazygit.nvim) with the following differences:
+- Dropped support for < NeoVim 0.10 and Vim
+- No VimScript code, and required components migrated to Lua.
+
+The plugin focuses on using modern NeoVim Lua APIs for faster operations, better code structure, and fix a few bugs I noticed while configuring Kdheepak's plugin in my config.
 
 See [akinsho/nvim-toggleterm](https://github.com/akinsho/nvim-toggleterm.lua#custom-terminals) or [voldikss/vim-floaterm](https://github.com/voldikss/vim-floaterm) as an alternative to this package.
 
-### Install
-
-Install using [`vim-plug`](https://github.com/junegunn/vim-plug):
-
-```vim
-" nvim v0.7.2
-Plug 'kdheepak/lazygit.nvim'
-```
+## Install
 
 Install using [`packer.nvim`](https://github.com/wbthomason/packer.nvim):
 
 ```lua
--- nvim v0.7.2
 use({
-    "kdheepak/lazygit.nvim",
-    -- optional for floating window border decoration
+    "103sbavert/lazygit.nvim",
+    -- optional: only needed if use_plenary = true
     requires = {
         "nvim-lua/plenary.nvim",
     },
@@ -31,9 +28,9 @@ use({
 Install using [`lazy.nvim`](https://github.com/folke/lazy.nvim):
 
 ```lua
--- nvim v0.8.0
+---@type LazySpec
 return {
-    "kdheepak/lazygit.nvim",
+    "103sbavert/lazygit.nvim",
     lazy = true,
     cmd = {
         "LazyGit",
@@ -41,100 +38,101 @@ return {
         "LazyGitCurrentFile",
         "LazyGitFilter",
         "LazyGitFilterCurrentFile",
+        "LazyGitLog",
     },
-    -- optional for floating window border decoration
+    -- optional: only needed if use_plenary = true
     dependencies = {
         "nvim-lua/plenary.nvim",
-    },
-    -- setting the keybinding for LazyGit with 'keys' is recommended in
-    -- order to load the plugin when the command is run for the first time
-    keys = {
-        { "<leader>lg", "<cmd>LazyGit<cr>", desc = "LazyGit" }
     }
 }
 ```
 
-Feel free to use any plugin manager.
-Just remember that if you are not using the latest neovim release, you will need to use [the `nvim-v0.4.3` branch](https://github.com/kdheepak/lazygit.vim/tree/nvim-v0.4.3).
-Integration with `nvr` works better on the `main` branch.
-
-You can check what version of `neovim` you have:
+Feel free to use any plugin manager, but ensure your `NeoVim` version is newer or equal to `0.10`
+You can check what version of `NeoVim` you have:
 
 ```bash
 nvim --version
 ```
 
-### Usage
+## Configuration
 
 The following are configuration options and their defaults.
 
-```vim
-let g:lazygit_floating_window_winblend = 0 " transparency of floating window
-let g:lazygit_floating_window_scaling_factor = 0.9 " scaling factor for floating window
-let g:lazygit_floating_window_border_chars = ['╭','─', '╮', '│', '╯','─', '╰', '│'] " customize lazygit popup window border characters
-let g:lazygit_floating_window_use_plenary = 0 " use plenary.nvim to manage floating window if available
-let g:lazygit_use_neovim_remote = 1 " fallback to 0 if neovim-remote is not installed
+```lua
+---@class LazyGitFloatingWindowConfig
+---@field scaling_factor number? Window size as fraction of editor (0.0-1.0)
+---@field winblend integer? Transparency (0=opaque, 100=transparent)
+---@field border string[]? Border characters: top-left, top, top-right, right, bottom-right, bottom, bottom-left, left
+---@field use_plenary boolean? Use plenary.nvim for window management
 
-let g:lazygit_use_custom_config_file_path = 0 " config file path is evaluated if this value is 1
-let g:lazygit_config_file_path = '' " custom config file path
-" OR
-let g:lazygit_config_file_path = [] " list of custom config file paths
+---@class LazyGitConfig
+---@field floating_window LazyGitFloatingWindowConfig? Floating window appearance
+---@field neovim_remote boolean? Use nvr for commit editing integration
+---@field config_file_path string|string[]? Custom lazygit config path(s) — empty string or empty table uses default
+---@field on_exit_callback fun()? Called after lazygit exits successfully
+
+---@type LazyGitConfig
+local defaults = {
+    floating_window = {
+        scaling_factor = 0.9,
+        winblend = 0,
+        border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
+        use_plenary = false,
+    },
+    neovim_remote = vim.fn.executable("nvr") == 1,
+    config_file_path = "",
+    on_exit_callback = nil,
+}
 ```
+
+Set up a mapping to call `:LazyGit` using `lazy.nvim`:
 
 ```lua
-vim.g.lazygit_floating_window_winblend = 0 -- transparency of floating window
-vim.g.lazygit_floating_window_scaling_factor = 0.9 -- scaling factor for floating window
-vim.g.lazygit_floating_window_border_chars = {'╭','─', '╮', '│', '╯','─', '╰', '│'} -- customize lazygit popup window border characters
-vim.g.lazygit_floating_window_use_plenary = 0 -- use plenary.nvim to manage floating window if available
-vim.g.lazygit_use_neovim_remote = 1 -- fallback to 0 if neovim-remote is not installed
-
-vim.g.lazygit_use_custom_config_file_path = 0 -- config file path is evaluated if this value is 1
-vim.g.lazygit_config_file_path = '' -- custom config file path
--- OR
-vim.g.lazygit_config_file_path = {} -- table of custom config file paths
-
-vim.g.lazygit_on_exit_callback = nil -- optional function callback when exiting lazygit (useful for example to refresh some UI elements after lazy git has made some changes)
+---@type LazySpec
+return {
+    -- ...
+    keys = {
+        { "<leader>lg", "<cmd>LazyGit<cr>", desc = "[l]azygit" }, -- or LazyGitCurrentFile
+    },
+    -- ...
+}
 ```
 
-Call `:LazyGit` to start a floating window with `lazygit` in the current working directory.
-And set up a mapping to call `:LazyGit`:
+## Usage
 
-```vim
-" setup mapping to call :LazyGit
-nnoremap <silent> <leader>gg :LazyGit<CR>
+### Open main LazyGit window
+
+Call `:LazyGit` to start a floating window with `lazygit` in the current working
+directory or call `:LazyGitCurrentFile` to start a floating window with
+`lazygit` in the project root of the current file.
+
+
+### Open project commits in a floating window
+
+Call `:LazyGitFilter` or `:LazyGitFilterCurrentFile` or use
+
+```lua
+require("lazygit").lazygitfilter()
 ```
 
-Call `:LazyGitCurrentFile` to start a floating window with `lazygit` in the project root of the current file.
+### Open `lazygit` configuration file
 
-Open the configuration file for `lazygit` directly from vim.
+Call `:LazyGitConfig` or use
 
-```vim
-:LazyGitConfig<CR>
+```lua
+require("lazygit").lazygitconfig()
 ```
 
-If the file does not exist it'll load the defaults for you.
+If the file does not exist it'll load the default as a template for you (or notify with an error if it fails)
 
-![](https://user-images.githubusercontent.com/1813121/78830902-46721580-79d8-11ea-8809-291b346b6c42.gif)
+## Neovim Remote (`nvr`) support
 
-Open project commits with `lazygit` directly from vim in floating window.
+If you have [neovim-remote](https://github.com/mhinz/neovim-remote) and haven't set `LazyGitConfig.neovim_remote` to `false`, this plugin will launch the commit editor inside your `neovim` instance when you use `C` (upper case `c`) inside `lazygit`.
 
-```vim
-:LazyGitFilter<CR>
-```
+### Installation
 
-Open buffer commits with `lazygit` directly from vim in floating window.
-
-```vim
-:LazyGitFilterCurrentFile<CR>
-```
-
-**Using neovim-remote**
-
-If you have [neovim-remote](https://github.com/mhinz/neovim-remote) and have configured to use it in neovim, it'll launch the commit editor inside your neovim instance when you use `C` inside `lazygit`.
-
-1. `pip install neovim-remote`
-
-2. Add the following to your `~/.bashrc`:
+1. `pip install neovim-remote` (or your preferred package manager).
+2. Add the following to your `~/.bashrc`: (or your preferred shell's `*rc` file)
 
 ```bash
 if [ -n "$NVIM_LISTEN_ADDRESS" ]; then
@@ -154,128 +152,102 @@ else
 fi
 ```
 
-4. Add the following to `~/.vimrc`:
+4. Add the following to your NeoVim lua config:
 
-```vim
-if has('nvim') && executable('nvr')
-  let $GIT_EDITOR = "nvr -cc split --remote-wait +'set bufhidden=wipe'"
-endif
+```lua
+if vim.fn.executable("nvr") == 1 then
+    vim.env.GIT_EDITOR = "nvr -cc split --remote-wait +'set bufhidden=wipe'"
+end
 ```
 
-If you have `neovim-remote` and don't want `lazygit.nvim` to use it, you can disable it using the following configuration option:
+**Tip:** If you have `neovim-remote` and don't want `lazygit.nvim` to use it, you can disable it in your config:
 
-```vim
-let g:lazygit_use_neovim_remote = 0
+```lua
+require("lazygit").setup({
+    -- ...
+    neovim_remote = false,
+    -- ...
+})
 ```
 
-**Using nvim --listen and nvim --server to edit files in same process**
-
-You can use vanilla nvim server to edit files in the same nvim instance when you use `e` inside `lazygit`.
-
-1. You have to start nvim with the `--listen` parameter. An easy way to ensure this is to use an alias:
-```bash
-# ~/.bashrc
-alias vim='nvim --listen /tmp/nvim-server.pipe'
-```
-
-2. You have to modify lazygit to attempt connecting to existing nvim instance on edit:
-```yml
-# ~/.config/jesseduffield/lazygit/config.yml
-os:
-  editCommand: 'nvim'
-  editCommandTemplate: '{{editor}} --server /tmp/nvim-server.pipe --remote-tab "$(pwd)/{{filename}}"'
-```
-
-### Telescope Plugin
+## Telescope Plugin
 
 The Telescope plugin is used to track all git repository visited in one nvim session.
 
-**Why a telescope Plugin** ?
+**Why a telescope Plugin?**
 
 Assuming you have one or more submodule(s) in your project and you want to commit changes in both the submodule(s)
 and the main repo.
-Though switching between submodules and main repo is not straight forward.
-A solution at first could be:
 
-1. open a file inside the submodule
-2. open lazygit
-3. do commit
-4. then open a file in the main repo
-5. open lazygit
-6. do commit
+Though switching between submodules and main repo is not straight forward, a solution at first could be:
 
-That is really annoying.
-Instead, you can open it with telescope.
+1. Open a file inside the submodule
+2. Open lazygit
+3. Do commit
+4. Then open a file in the main repo
+5. Open lazygit
+6. Do commit
 
-**How to use**
+But, that is really annoying. Instead, you can open it with telescope.
+
+### Configuration and usage
 
 Install using [`packer.nvim`](https://github.com/wbthomason/packer.nvim):
 
 ```lua
--- nvim v0.7.2
 use({
-    "kdheepak/lazygit.nvim",
-    requires = {
-        "nvim-telescope/telescope.nvim",
-        "nvim-lua/plenary.nvim",
-    },
+    "103sbavert/lazygit.nvim",
+    -- ...
     config = function()
         require("telescope").load_extension("lazygit")
     end,
+    -- ...
 })
 ```
 
 Install using [`lazy.nvim`](https://github.com/folke/lazy.nvim):
 
 ```lua
--- nvim v0.8.0
 {
-    "kdheepak/lazygit.nvim",
-    lazy = false,
-    cmd = {
-        "LazyGit",
-        "LazyGitConfig",
-        "LazyGitCurrentFile",
-        "LazyGitFilter",
-        "LazyGitFilterCurrentFile",
-    },
-    -- optional for floating window border decoration
-    dependencies = {
-        "nvim-telescope/telescope.nvim",
-        "nvim-lua/plenary.nvim",
-    },
+    "103sbavert/lazygit.nvim",
+    -- ...
     config = function()
         require("telescope").load_extension("lazygit")
     end,
+    -- ...
 }
 ```
 
-Lazy loading `lazygit.nvim` for telescope functionality is not supported. Open an issue if you wish to have this feature.
 
-If you are not using Packer, to load the telescope extension, you have to add this line to your configuration:
+**Warning:** Lazy loading `lazygit.nvim` for telescope functionality is not supported. Open
+an issue if you wish to have this feature.
 
-```lua
-require('telescope').load_extension('lazygit')
-```
-
-By default the paths of each repo is stored only when lazygit is triggered.
-Though, this may not be convenient, so it possible to do something like this:
-
-```vim
-autocmd BufEnter * :lua require('lazygit.utils').project_root_dir()
-```
-
-That makes sure that any opened buffer which is contained in a git repo will be tracked.
-
-Once you have loaded the extension, you can invoke the plugin using:
+Once you have loaded the extension, you can call `:Telescope lazygit` or use:
 
 ```lua
-lua require("telescope").extensions.lazygit.lazygit()
+require("telescope").extensions.lazygit.lazygit()
 ```
 
-### Highlighting groups
+
+**Tip:** By default the paths of each repo is stored only when lazygit is triggered. If you find this inconvenient, it is possible to do something like this:
+
+```lua
+vim.api.nvim_create_autocmd("BufEnter", {
+    pattern = "*",
+    callback = function()
+        local git = require("lazygit.git")
+        local root = git.get_workspace_root()
+        git.append_visited(root)
+    end,
+})
+```
+
+That makes sure that any opened buffer which is contained in a git repo will be
+tracked.
+
+## Highlighting groups
 
 | Highlight Group   | Default Group | Description                              |
-| ------------------| --------------| -----------------------------------------|
+| ----------------- | ------------- | ---------------------------------------- |
 | **LazyGitFloat**  | **_Normal_**  | Float terminal foreground and background |
 | **LazyGitBorder** | **_Normal_**  | Float terminal border                    |
