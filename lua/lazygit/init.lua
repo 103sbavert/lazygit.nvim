@@ -37,13 +37,13 @@ local buffer = -1
 --- Display an error notification.
 ---@param msg string The error message to display
 local function notify_err(msg)
-  vim.notify(msg, vim.log.levels.ERROR, { title = "LazyGit" })
+    vim.notify(msg, vim.log.levels.ERROR, { title = "LazyGit" })
 end
 
 --- Display a warning notification.
 ---@param msg string The warning message to display
 local function notify_warn(msg)
-  vim.notify(msg, vim.log.levels.WARN, { title = "LazyGit" })
+    vim.notify(msg, vim.log.levels.WARN, { title = "LazyGit" })
 end
 
 -- [[ Availability guard ]]
@@ -52,39 +52,43 @@ end
 --- Shows error notification if not found.
 ---@return boolean available True if lazygit is found in PATH
 local function has_lazygit()
-  if not internal.has_lazygit() then
-    notify_err("lazygit not found. See :h lazygit for installation.")
-    return false
-  end
-  return true
+    if not internal.has_lazygit() then
+        notify_err("lazygit not found. See :h lazygit for installation.")
+        return false
+    end
+    return true
 end
 
 --- Append -ucf flag to command if custom config is configured.
 --- Mutates the provided command table in place.
 ---@param cmd string[] Command arguments table to mutate
 local function inject_config_flags(cmd)
-  if not config.has_custom_config() then
-    return
-  end
+    if not config.has_custom_config() then
+        return
+    end
 
-  local result = config.resolve_config_paths()
-  if not result then
-    return
-  end
+    local result = config.resolve_config_paths()
+    if not result then
+        return
+    end
 
-  -- Warn about invalid paths
-  for _, invalid_path in ipairs(result.invalid) do
-    notify_warn(("lazygit: config path not found, skipping: %s"):format(invalid_path))
-  end
+    -- Warn about invalid paths
+    for _, invalid_path in ipairs(result.invalid) do
+        notify_warn(
+            ("lazygit: config path not found, skipping: %s"):format(
+                invalid_path
+            )
+        )
+    end
 
-  local resolved
-  if #result.valid > 0 then
-    resolved = table.concat(result.valid, ",")
-  else
-    resolved = internal.get_default_config_path()
-  end
+    local resolved
+    if #result.valid > 0 then
+        resolved = table.concat(result.valid, ",")
+    else
+        resolved = internal.get_default_config_path()
+    end
 
-  vim.list_extend(cmd, { "-ucf", resolved })
+    vim.list_extend(cmd, { "-ucf", resolved })
 end
 
 --- Inject path flags (-p/-w/-g) into command based on environment and context.
@@ -92,17 +96,20 @@ end
 ---@param cmd string[] Command arguments table to mutate
 ---@param hint string? Optional directory hint for path resolution
 local function inject_path_flags(cmd, hint)
-  -- GIT_DIR/GIT_WORK_TREE override everything
-  if vim.env.GIT_DIR and vim.env.GIT_WORK_TREE then
-    vim.list_extend(cmd, { "-w", vim.env.GIT_WORK_TREE, "-g", vim.env.GIT_DIR })
-    return
-  end
+    -- GIT_DIR/GIT_WORK_TREE override everything
+    if vim.env.GIT_DIR and vim.env.GIT_WORK_TREE then
+        vim.list_extend(
+            cmd,
+            { "-w", vim.env.GIT_WORK_TREE, "-g", vim.env.GIT_DIR }
+        )
+        return
+    end
 
-  local path = git.resolve_work_path(hint)
-  if path then
-    vim.list_extend(cmd, { "-p", path })
-    git.append_visited(path)
-  end
+    local path = git.resolve_work_path(hint)
+    if path then
+        vim.list_extend(cmd, { "-p", path })
+        git.append_visited(path)
+    end
 end
 
 --- Callback when lazygit terminal job exits.
@@ -111,98 +118,99 @@ end
 ---@param code integer Exit code from lazygit process
 ---@param _ any Event type (unused)
 local function on_exit(_, code, _)
-  LAZYGIT_BUFFER = nil
-  LAZYGIT_LOADED = false
-  vim.g.lazygit_opened = 0
+    LAZYGIT_BUFFER = nil
+    LAZYGIT_LOADED = false
+    vim.g.lazygit_opened = 0
 
-  -- Always close the window — the job is done regardless of exit code.
-  -- checktime is skipped on abnormal exit since no git operations completed successfully.
-  if code == 0 then
-    vim.cmd("silent! checktime")
-  end
+    -- Always close the window — the job is done regardless of exit code.
+    -- checktime is skipped on abnormal exit since no git operations completed successfully.
+    if code == 0 then
+        vim.cmd("silent! checktime")
+    end
 
-  if vim.api.nvim_win_is_valid(win) then
-    vim.api.nvim_win_close(win, true)
-  end
-  if vim.api.nvim_win_is_valid(prev_win) then
-    vim.api.nvim_set_current_win(prev_win)
-  end
-  if vim.api.nvim_buf_is_valid(buffer) then
-    vim.api.nvim_buf_delete(buffer, { force = true })
-  end
+    if vim.api.nvim_win_is_valid(win) then
+        vim.api.nvim_win_close(win, true)
+    end
+    if vim.api.nvim_win_is_valid(prev_win) then
+        vim.api.nvim_set_current_win(prev_win)
+    end
+    if vim.api.nvim_buf_is_valid(buffer) then
+        vim.api.nvim_buf_delete(buffer, { force = true })
+    end
 
-  prev_win, win, buffer = -1, -1, -1
+    prev_win, win, buffer = -1, -1, -1
 
-  local on_exit_callback = config.options.on_exit_callback
-  if code == 0 and on_exit_callback and vim.is_callable(on_exit_callback) then
-    on_exit_callback()
-  end
+    local on_exit_callback = config.options.on_exit_callback
+    if code == 0 and on_exit_callback and vim.is_callable(on_exit_callback) then
+        on_exit_callback()
+    end
 end
 
 --- Execute lazygit command in the terminal buffer.
 --- Prevents duplicate execution via LAZYGIT_LOADED flag.
 ---@param cmd string[] Full command with arguments to execute
 local function exec_lazygit_command(cmd)
-  if LAZYGIT_LOADED then
-    vim.cmd.startinsert()
-    return
-  end
+    if LAZYGIT_LOADED then
+        vim.cmd.startinsert()
+        return
+    end
 
-  -- Set immediately to prevent race on rapid calls
-  LAZYGIT_LOADED = true
-  vim.g.lazygit_opened = 1
+    -- Set immediately to prevent race on rapid calls
+    LAZYGIT_LOADED = true
+    vim.g.lazygit_opened = 1
 
-  vim.schedule(function()
-    vim.fn.jobstart(cmd, { term = true, on_exit = on_exit })
-    vim.cmd.startinsert()
-  end)
+    vim.schedule(function()
+        vim.fn.jobstart(cmd, { term = true, on_exit = on_exit })
+        vim.cmd.startinsert()
+    end)
 end
 
 --- Open a new lazygit session.
 --- Saves current window, opens floating window, and starts lazygit.
 ---@param cmd string[] Full command with arguments to execute
 local function open_session(cmd)
-  prev_win = vim.api.nvim_get_current_win()
-  win, buffer = open_floating_window()
-  exec_lazygit_command(cmd)
+    prev_win = vim.api.nvim_get_current_win()
+    win, buffer = open_floating_window()
+    exec_lazygit_command(cmd)
 end
 
 --- Open lazygit in a floating window.
 --- Command: :LazyGit
 ---@param path string? Optional path to git repository
 local function lazygit(path)
-  if not has_lazygit() then
-    return
-  end
-  local cmd = { "lazygit" }
-  inject_config_flags(cmd)
-  inject_path_flags(cmd, path)
-  open_session(cmd)
+    if not has_lazygit() then
+        return
+    end
+    local cmd = { "lazygit" }
+    inject_config_flags(cmd)
+    inject_path_flags(cmd, path)
+    open_session(cmd)
 end
 
 --- Open lazygit log view in a floating window.
 --- Command: :LazyGitLog
 ---@param path string? Optional path to git repository
 local function lazygitlog(path)
-  if not has_lazygit() then
-    return
-  end
-  local cmd = { "lazygit", "log" }
-  inject_config_flags(cmd)
-  inject_path_flags(cmd, path)
-  open_session(cmd)
+    if not has_lazygit() then
+        return
+    end
+    local cmd = { "lazygit", "log" }
+    inject_config_flags(cmd)
+    inject_path_flags(cmd, path)
+    open_session(cmd)
 end
 
 --- Open lazygit for the current file's repository.
 --- Command: :LazyGitCurrentFile
 local function lazygitcurrentfile()
-  local dir = vim.bo.buftype == "terminal" and vim.fn.getcwd() or vim.fn.expand("%:p:h")
-  local git_root = git.get_git_root(dir)
-  if not git_root then
-    notify_err("LazyGitCurrentFile: not inside a git repository")
-    return
-  end
-  lazygit(git_root)
+    local dir = vim.bo.buftype == "terminal" and vim.fn.getcwd()
+        or vim.fn.expand("%:p:h")
+    local git_root = git.get_git_root(dir)
+    if not git_root then
+        notify_err("LazyGitCurrentFile: not inside a git repository")
+        return
+    end
+    lazygit(git_root)
 end
 
 --- Open lazygit filtered to a specific path.
@@ -210,120 +218,130 @@ end
 ---@param path string? Path to filter (defaults to project root)
 ---@param git_root string? Git repository root path
 local function lazygitfilter(path, git_root)
-  if not has_lazygit() then
-    return
-  end
+    if not has_lazygit() then
+        return
+    end
 
-  path = path or git.get_workspace_root()
-  if not path then
-    notify_err("LazyGitFilter: could not determine repository path")
-    return
-  end
+    path = path or git.get_workspace_root()
+    if not path then
+        notify_err("LazyGitFilter: could not determine repository path")
+        return
+    end
 
-  local cmd = { "lazygit", "-f", path }
-  if git_root and not (vim.env.GIT_DIR and vim.env.GIT_WORK_TREE) then
-    vim.list_extend(cmd, { "-p", git_root })
-  end
-  open_session(cmd)
+    local cmd = { "lazygit", "-f", path }
+    if git_root and not (vim.env.GIT_DIR and vim.env.GIT_WORK_TREE) then
+        vim.list_extend(cmd, { "-p", git_root })
+    end
+    open_session(cmd)
 end
 
 --- Open lazygit filtered to the current file.
 --- Command: :LazyGitFilterCurrentFile
 local function lazygitfiltercurrentfile()
-  if vim.bo.buftype == "terminal" then
-    notify_err("LazyGitFilterCurrentFile is not available from terminal buffers")
-    return
-  end
+    if vim.bo.buftype == "terminal" then
+        notify_err(
+            "LazyGitFilterCurrentFile is not available from terminal buffers"
+        )
+        return
+    end
 
-  local buf_path = vim.api.nvim_buf_get_name(0)
-  if buf_path == "" then
-    notify_err("LazyGitFilterCurrentFile: no file in current buffer")
-    return
-  end
+    local buf_path = vim.api.nvim_buf_get_name(0)
+    if buf_path == "" then
+        notify_err("LazyGitFilterCurrentFile: no file in current buffer")
+        return
+    end
 
-  local git_root = git.get_git_root(vim.fs.dirname(buf_path))
-  if not git_root then
-    notify_err("LazyGitFilterCurrentFile: not inside a git repository")
-    return
-  end
+    local git_root = git.get_git_root(vim.fs.dirname(buf_path))
+    if not git_root then
+        notify_err("LazyGitFilterCurrentFile: not inside a git repository")
+        return
+    end
 
-  local relative_path = buf_path:sub(#git_root + 2)
-  lazygitfilter(relative_path, git_root)
+    local relative_path = buf_path:sub(#git_root + 2)
+    lazygitfilter(relative_path, git_root)
 end
 
 --- Open or create a config file at the given path.
 --- If file doesn't exist, prompts user and populates with defaults.
 ---@param path string Path to config file
 local function open_config_file(path)
-  local clean_path = vim.fs.normalize(path)
+    local clean_path = vim.fs.normalize(path)
 
-  -- File exists → just open it
-  if filesystem.exists(clean_path) then
+    -- File exists → just open it
+    if filesystem.exists(clean_path) then
+        vim.cmd.edit(clean_path)
+        return
+    end
+
+    -- Prompt user to create
+    local prompt = string.format(
+        "File %s does not exist.\nDo you want to create the file and populate it with the default configuration?",
+        clean_path
+    )
+    local answer = vim.fn.confirm(prompt, "\n&Yes\n&No")
+    if answer ~= 1 then
+        return -- User cancelled
+    end
+
+    -- Ensure parent directory exists
+    local dir = vim.fs.dirname(clean_path)
+    if not filesystem.exists(dir) then
+        vim.fn.mkdir(dir, "p")
+    end
+
+    -- Open file (creates it)
     vim.cmd.edit(clean_path)
-    return
-  end
 
-  -- Prompt user to create
-  local prompt = string.format(
-    "File %s does not exist.\nDo you want to create the file and populate it with the default configuration?",
-    clean_path
-  )
-  local answer = vim.fn.confirm(prompt, "\n&Yes\n&No")
-  if answer ~= 1 then
-    return -- User cancelled
-  end
+    -- Get default config and populate buffer
+    local lines, err = internal.get_config_template()
 
-  -- Ensure parent directory exists
-  local dir = vim.fs.dirname(clean_path)
-  if not filesystem.exists(dir) then
-    vim.fn.mkdir(dir, "p")
-  end
+    -- Print error if one was thrown, or if generated template has no lines
+    if err or #lines == 0 or not lines then
+        notify_err(err or "Generated config template was empty")
+        return
+    end
 
-  -- Open file (creates it)
-  vim.cmd.edit(clean_path)
-
-  -- Get default config and populate buffer
-  local lines, err = internal.get_config_template()
-
-  -- Print error if one was thrown, or if generated template has no lines
-  if err or #lines == 0 or not lines then
-    notify_err(err or "Generated config template was empty")
-    return
-  end
-
-  vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
-  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
 end
 
 --- Open lazygit config file for editing.
 --- If multiple configs exist, prompts user to select one.
 --- Command: :LazyGitConfig
 local function lazygitconfig()
-  local result = config.resolve_config_paths()
+    local result = config.resolve_config_paths()
 
-  -- Warn about invalid paths
-  if result then
-    for _, invalid_path in ipairs(result.invalid) do
-      notify_warn(("lazygit: config path not found, skipping: %s"):format(invalid_path))
+    -- Warn about invalid paths
+    if result then
+        for _, invalid_path in ipairs(result.invalid) do
+            notify_warn(
+                ("lazygit: config path not found, skipping: %s"):format(
+                    invalid_path
+                )
+            )
+        end
     end
-  end
 
-  local paths = result and #result.valid > 0 and result.valid or nil
+    local paths = result and #result.valid > 0 and result.valid or nil
 
-  if not paths then
-    open_config_file(internal.get_default_config_path())
-    return
-  end
+    if not paths then
+        open_config_file(internal.get_default_config_path())
+        return
+    end
 
-  if #paths == 1 then
-    open_config_file(paths[1])
-  else
-    vim.ui.select(paths, { prompt = "Select config file to edit:" }, function(selected)
-      if selected then
-        open_config_file(selected)
-      end
-    end)
-  end
+    if #paths == 1 then
+        open_config_file(paths[1])
+    else
+        vim.ui.select(
+            paths,
+            { prompt = "Select config file to edit:" },
+            function(selected)
+                if selected then
+                    open_config_file(selected)
+                end
+            end
+        )
+    end
 end
 
 ---@class LazyGitModule
@@ -337,12 +355,12 @@ end
 ---@field get_workspace_root fun(): string? Get workspace/project root directory
 
 return {
-  setup = config.setup,
-  lazygit = lazygit,
-  lazygitlog = lazygitlog,
-  lazygitcurrentfile = lazygitcurrentfile,
-  lazygitfilter = lazygitfilter,
-  lazygitfiltercurrentfile = lazygitfiltercurrentfile,
-  lazygitconfig = lazygitconfig,
-  get_workspace_root = git.get_workspace_root,
+    setup = config.setup,
+    lazygit = lazygit,
+    lazygitlog = lazygitlog,
+    lazygitcurrentfile = lazygitcurrentfile,
+    lazygitfilter = lazygitfilter,
+    lazygitfiltercurrentfile = lazygitfiltercurrentfile,
+    lazygitconfig = lazygitconfig,
+    get_workspace_root = git.get_workspace_root,
 }
