@@ -1,43 +1,59 @@
--- Minimal Neovim Lua configuration for testing lazygit.nvim using lazy.nvim
--- Save this as init.lua and run with: nvim -u init.lua
+---@module "tests.init"
+---
+--- Minimal Neovim configuration for testing lazygit.nvim.
+--- Run with: nvim -u tests/init.lua
 
--- Basic settings
-vim.opt.compatible = false
-
--- Set leader key (must be set before lazy setup)
+--- Leader key for keybindings.
+---@type string
 vim.g.mapleader = " "
+
+--- Local leader key for buffer-local keybindings.
+---@type string
 vim.g.maplocalleader = "\\"
 
--- Set built-in colorscheme
-vim.cmd([[colorscheme vim]])
-
--- Install lazy.nvim if it doesn't exist
+--- Path to lazy.nvim plugin manager.
+---@type string
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable", -- latest stable release
-    lazypath,
-  })
+
+-- Bootstrap lazy.nvim if not installed
+if not vim.uv.fs_stat(lazypath) then
+    vim.fn.system({
+        "git",
+        "clone",
+        "--filter=blob:none",
+        "https://github.com/folke/lazy.nvim.git",
+        "--branch=stable",
+        lazypath,
+    })
 end
+
 vim.opt.rtp:prepend(lazypath)
 
--- Plugin setup using lazy.nvim
+-- Plugin setup using lazy.nvim opts pattern
 require("lazy").setup({
-  {
-    dir = "~/gitrepos/lazygit.nvim",
-    name = "lazygit.nvim",
-    config = function()
-      -- Keybinding for LazyGit
-      vim.keymap.set("n", "<leader>lg", ":LazyGit<CR>", {
-        silent = true,
-        desc = "Open LazyGit",
-      })
-    end,
-  },
+    {
+        dir = vim.fn.getcwd(),
+        name = "lazygit.nvim",
+        ---@type LazyGitConfig
+        opts = {
+            floating_window = {
+                scaling_factor = 0.9,
+                winblend = 0,
+            },
+            neovim_remote = true,
+        },
+        keys = {
+            { "<leader>lg", "<cmd>LazyGit<cr>", desc = "Open LazyGit" },
+            {
+                "<leader>lf",
+                "<cmd>LazyGitCurrentFile<cr>",
+                desc = "Open LazyGit (current file)",
+            },
+            {
+                "<leader>lc",
+                "<cmd>LazyGitConfig<cr>",
+                desc = "Open LazyGit config",
+            },
+        },
+    },
 })
-
--- Instructions: Save this file and run `nvim -u init.lua` then type `<leader>lg` in normal mode
