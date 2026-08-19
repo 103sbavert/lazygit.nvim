@@ -359,5 +359,4 @@ return {
     lazygitfilter = lazygitfilter,
     lazygitfiltercurrentfile = lazygitfiltercurrentfile,
     lazygitconfig = lazygitconfig,
-    get_workspace_root = git.get_workspace_root,
 }
