@@ -13,7 +13,6 @@ local M = {}
 ---@field scaling_factor number? Window size as fraction of editor (0.0-1.0)
 ---@field winblend integer? Transparency (0=opaque, 100=transparent)
 ---@field border string[]? Border characters: top-left, top, top-right, right, bottom-right, bottom, bottom-left, left
----@field use_plenary boolean? Use plenary.nvim for window management
 
 ---@class LazyGitConfig
 ---@field floating_window LazyGitFloatingWindowConfig? Floating window appearance
@@ -32,8 +31,7 @@ local defaults = {
     floating_window = {
         scaling_factor = 0.9,
         winblend = 0,
-        border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-        use_plenary = false,
+        border = nil,
     },
     neovim_remote = vim.fn.executable("nvr") == 1,
     config_file_path = "",
