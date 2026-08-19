@@ -114,10 +114,8 @@ end
 
 --- Callback when lazygit terminal job exits.
 --- Cleans up window, buffer, and state. Triggers checktime on success.
----@param _ any Job ID (unused)
 ---@param code integer Exit code from lazygit process
----@param _ any Event type (unused)
-local function on_exit(_, code, _)
+local function on_exit(code)
     LAZYGIT_BUFFER = nil
     LAZYGIT_LOADED = false
     vim.g.lazygit_opened = 0
@@ -160,7 +158,10 @@ local function exec_lazygit_command(cmd)
     vim.g.lazygit_opened = 1
 
     vim.schedule(function()
-        vim.fn.jobstart(cmd, { term = true, on_exit = on_exit })
+        vim.fn.jobstart(
+            cmd,
+            { term = true, on_exit = function(_, code, _) on_exit(code) end }
+        )
         vim.cmd.startinsert()
     end)
 end
