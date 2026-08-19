@@ -120,11 +120,7 @@ local function on_exit(code)
     LAZYGIT_LOADED = false
     vim.g.lazygit_opened = 0
 
-    -- Always close the window — the job is done regardless of exit code.
-    -- checktime is skipped on abnormal exit since no git operations completed successfully.
-    if code == 0 then
-        vim.cmd("silent! checktime")
-    end
+    vim.cmd("silent! checktime")
 
     if vim.api.nvim_win_is_valid(win) then
         vim.api.nvim_win_close(win, true)
