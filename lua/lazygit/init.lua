@@ -114,19 +114,13 @@ end
 
 --- Callback when lazygit terminal job exits.
 --- Cleans up window, buffer, and state. Triggers checktime on success.
----@param _ any Job ID (unused)
 ---@param code integer Exit code from lazygit process
----@param _ any Event type (unused)
-local function on_exit(_, code, _)
+local function on_exit(code)
     LAZYGIT_BUFFER = nil
     LAZYGIT_LOADED = false
     vim.g.lazygit_opened = 0
 
-    -- Always close the window — the job is done regardless of exit code.
-    -- checktime is skipped on abnormal exit since no git operations completed successfully.
-    if code == 0 then
-        vim.cmd("silent! checktime")
-    end
+    vim.cmd("silent! checktime")
 
     if vim.api.nvim_win_is_valid(win) then
         vim.api.nvim_win_close(win, true)
@@ -160,7 +154,10 @@ local function exec_lazygit_command(cmd)
     vim.g.lazygit_opened = 1
 
     vim.schedule(function()
-        vim.fn.jobstart(cmd, { term = true, on_exit = on_exit })
+        vim.fn.jobstart(
+            cmd,
+            { term = true, on_exit = function(_, code, _) on_exit(code) end }
+        )
         vim.cmd.startinsert()
     end)
 end
@@ -362,5 +359,4 @@ return {
     lazygitfilter = lazygitfilter,
     lazygitfiltercurrentfile = lazygitfiltercurrentfile,
     lazygitconfig = lazygitconfig,
-    get_workspace_root = git.get_workspace_root,
 }

@@ -4,6 +4,7 @@ NeoVim plugin for showing [lazygit](https://github.com/jesseduffield/lazygit) in
 within NeoVim.
 
 A fork of [Kdheepak's plugin](https://github.com/kdheepak/lazygit.nvim) with the following differences:
+
 - Dropped support for < NeoVim 0.10 and Vim
 - No VimScript code, and required components migrated to Lua.
 
@@ -18,10 +19,6 @@ Install using [`packer.nvim`](https://github.com/wbthomason/packer.nvim):
 ```lua
 use({
     "103sbavert/lazygit.nvim",
-    -- optional: only needed if use_plenary = true
-    requires = {
-        "nvim-lua/plenary.nvim",
-    },
 })
 ```
 
@@ -40,10 +37,6 @@ return {
         "LazyGitFilterCurrentFile",
         "LazyGitLog",
     },
-    -- optional: only needed if use_plenary = true
-    dependencies = {
-        "nvim-lua/plenary.nvim",
-    }
 }
 ```
 
@@ -63,7 +56,6 @@ The following are configuration options and their defaults.
 ---@field scaling_factor number? Window size as fraction of editor (0.0-1.0)
 ---@field winblend integer? Transparency (0=opaque, 100=transparent)
 ---@field border string[]? Border characters: top-left, top, top-right, right, bottom-right, bottom, bottom-left, left
----@field use_plenary boolean? Use plenary.nvim for window management
 
 ---@class LazyGitConfig
 ---@field floating_window LazyGitFloatingWindowConfig? Floating window appearance
@@ -74,10 +66,9 @@ The following are configuration options and their defaults.
 ---@type LazyGitConfig
 local defaults = {
     floating_window = {
-        scaling_factor = 0.9,
+        scaling_factor = 0.85,
         winblend = 0,
-        border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-        use_plenary = false,
+        border = nil,
     },
     neovim_remote = vim.fn.executable("nvr") == 1,
     config_file_path = "",
@@ -105,7 +96,6 @@ return {
 Call `:LazyGit` to start a floating window with `lazygit` in the current working
 directory or call `:LazyGitCurrentFile` to start a floating window with
 `lazygit` in the project root of the current file.
-
 
 ### Open project commits in a floating window
 
@@ -218,7 +208,6 @@ Install using [`lazy.nvim`](https://github.com/folke/lazy.nvim):
 }
 ```
 
-
 **Warning:** Lazy loading `lazygit.nvim` for telescope functionality is not supported. Open
 an issue if you wish to have this feature.
 
@@ -227,7 +216,6 @@ Once you have loaded the extension, you can call `:Telescope lazygit` or use:
 ```lua
 require("telescope").extensions.lazygit.lazygit()
 ```
-
 
 **Tip:** By default the paths of each repo is stored only when lazygit is triggered. If you find this inconvenient, it is possible to do something like this:
 

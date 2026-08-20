@@ -1,7 +1,7 @@
 ---@module "lazygit.window"
 ---
 --- Floating window management for lazygit.nvim plugin.
---- Handles window creation, sizing, and plenary integration.
+--- Handles window creation, sizing
 
 local api = vim.api
 local config = require("lazygit.config")
@@ -22,20 +22,6 @@ local function get_border_chars() return config.options.floating_window.border e
 ---@return integer blend Winblend value (0-100)
 local function get_winblend() return config.options.floating_window.winblend end
 
--- [[ Plenary integration ]]
-
---- Attempt to load plenary floating window module if configured.
----@return boolean loaded Whether plenary was loaded successfully
----@return table? plenary The plenary.window.float module, or nil
-local function try_load_plenary()
-    if not config.options.floating_window.use_plenary then
-        return false, nil
-    end
-
-    local status, plenary = pcall(require, "plenary.window.float")
-    return status, plenary
-end
-
 -- [[ Window/buffer operations ]]
 
 --- Apply standard buffer and window options for lazygit floating window.
@@ -52,26 +38,6 @@ local function apply_win_buf_options(win_id, buf_id)
 
     api.nvim_set_hl(0, "LazyGitBorder", { link = "Normal", default = true })
     api.nvim_set_hl(0, "LazyGitFloat", { link = "Normal", default = true })
-end
-
---- Open a floating window using plenary.
----@param buf_id integer? Existing buffer ID to reuse, or nil to create new
----@param plenary table The plenary.window.float module
----@return integer win_id Created window ID
----@return integer buf_id Buffer ID (may be new or reused)
-local function open_plenary_window(buf_id, plenary)
-    ---@type { winblend: integer, bufnr: integer? }
-    local win_opts = { winblend = get_winblend() }
-
-    if buf_id then
-        win_opts.bufnr = buf_id
-    end
-
-    local sf = get_scale_factor()
-
-    local ret = plenary.percentage_range_window(sf, sf, win_opts)
-    apply_win_buf_options(ret.win_id, ret.bufnr)
-    return ret.win_id, ret.bufnr
 end
 
 --- Calculate floating window position and dimensions.
@@ -143,7 +109,6 @@ local function internal_open_floating_window(buf_id)
 end
 
 --- Open a floating window for lazygit.
---- Uses plenary if configured and available, otherwise uses built-in API.
 --- Reuses existing buffer if LAZYGIT_BUFFER is valid.
 ---@return integer win_id Created window ID
 ---@return integer buf_id Buffer ID used for the terminal
@@ -160,15 +125,7 @@ local function open_floating_window()
         buf_id = LAZYGIT_BUFFER
     end
 
-    local use_plenary, plenary = try_load_plenary()
-
-    if use_plenary and plenary then
-        win_id, buf_id = open_plenary_window(buf_id, plenary)
-    end
-
-    if not win_id then
-        win_id, buf_id = internal_open_floating_window(buf_id)
-    end
+    win_id, buf_id = internal_open_floating_window(buf_id)
 
     if is_reopen then
         LAZYGIT_LOADED = true
