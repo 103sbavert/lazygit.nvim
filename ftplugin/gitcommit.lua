@@ -33,7 +33,7 @@ vim.api.nvim_create_autocmd("BufUnload", {
     group = group,
     buffer = 0,
     callback = function()
-        local root = require("lazygit").get_workspace_root()
+        local root = require("lazygit.git").get_workspace_root()
         vim.g.lazygit_opened = 0
         vim.schedule(function() require("lazygit").lazygit(root) end)
     end,
