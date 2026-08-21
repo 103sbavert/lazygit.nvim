@@ -1,4 +1,4 @@
----@module "lazygit.filesystem"
+--- @module "lazygit.filesystem"
 ---
 --- Filesystem utilities for lazygit.nvim plugin.
 --- Provides path expansion, existence checks, and symlink detection.
@@ -7,8 +7,8 @@ local M = {}
 
 --- Expand a path, resolving ~, environment variables, and glob patterns.
 --- Always returns a list (globs may expand to multiple paths).
----@param path string Path to expand
----@return string[] paths List of expanded paths
+--- @param path string Path to expand
+--- @return string[] paths List of expanded paths
 function M.expand_path(path)
     local normalized = vim.fs.normalize(path)
     local expanded = vim.fn.expand(normalized, false, true)
@@ -22,14 +22,14 @@ function M.expand_path(path)
 end
 
 --- Check if a path exists (file or directory).
----@param path string Path to check
----@return boolean exists True if path exists
+--- @param path string Path to check
+--- @return boolean exists True if path exists
 function M.exists(path) return vim.uv.fs_stat(path) ~= nil end
 
 --- Check if a path is a symbolic link.
 --- Returns false for empty paths (unnamed buffers).
----@param path string? Path to check (defaults to current buffer)
----@return boolean is_link True if path is a symlink
+--- @param path string? Path to check (defaults to current buffer)
+--- @return boolean is_link True if path is a symlink
 function M.is_symlink(path)
     local curr_path = path or vim.api.nvim_buf_get_name(0)
     if curr_path == "" then

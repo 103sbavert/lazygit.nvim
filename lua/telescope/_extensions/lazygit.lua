@@ -1,4 +1,4 @@
----@module "telescope._extensions.lazygit"
+--- @module "telescope._extensions.lazygit"
 ---
 --- Telescope extension for lazygit.nvim.
 --- Provides a picker to browse and switch between visited git repositories.
@@ -22,13 +22,13 @@ end
 
 -- ─── Picker ───────────────────────────────────────────────────────────────────
 
----@class RepoEntry
----@field idx integer Index in the list (1-based)
----@field value string Full path to repository
----@field repo_name string Repository directory name
+--- @class RepoEntry
+--- @field idx integer Index in the list (1-based)
+--- @field value string Full path to repository
+--- @field repo_name string Repository directory name
 
 --- Create telescope picker for visited lazygit repositories.
----@param opts table? Telescope picker options
+--- @param opts table? Telescope picker options
 local function lazygit_repos(opts)
     local displayer = require("telescope.pickers.entry_display").create({
         separator = "",
@@ -39,7 +39,7 @@ local function lazygit_repos(opts)
         },
     })
 
-    ---@type RepoEntry[]
+    --- @type RepoEntry[]
     local repos = {}
     for _, v in pairs(git.visited_repos) do
         if v then

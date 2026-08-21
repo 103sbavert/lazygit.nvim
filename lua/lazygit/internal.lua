@@ -1,4 +1,4 @@
----@module "lazygit.internal"
+--- @module "lazygit.internal"
 ---
 --- Lazygit executable utilities for lazygit.nvim plugin.
 --- Provides executable detection, default config retrieval, and nvr editor building.
@@ -8,8 +8,8 @@ local config = require("lazygit.config")
 local M = {}
 
 --- Joins non-nil string values with a single space.
----@param parts (string?)[] List of strings or nils
----@return string joined Space-separated non-nil values
+--- @param parts (string?)[] List of strings or nils
+--- @return string joined Space-separated non-nil values
 function M.compact_join(parts)
     local result = {}
     for _, v in ipairs(parts) do
@@ -22,9 +22,9 @@ end
 
 --- Formats a single nvr flag with all its arguments, shell-escaped.
 --- Returns nil if args is empty or nil.
----@param flag string Flag prefix e.g. "-cc ", "-c ", "+"
----@param args string|string[]? Argument(s) for the flag
----@return string? formatted Formatted flag+args string, or nil
+--- @param flag string Flag prefix e.g. "-cc ", "-c ", "+"
+--- @param args string|string[]? Argument(s) for the flag
+--- @return string? formatted Formatted flag+args string, or nil
 function M.format_flags(flag, args)
     if type(args) == "string" and args ~= "" then
         return flag .. vim.fn.shellescape(args)
@@ -40,7 +40,7 @@ end
 
 --- Build the GIT_EDITOR value for the lazygit terminal job.
 --- Returns nil if neovim_remote is disabled or nvr is not available.
----@return string? editor Shell command string for GIT_EDITOR, or nil
+--- @return string? editor Shell command string for GIT_EDITOR, or nil
 function M.build_nvr_git_editor()
     if vim.fn.executable("nvr") ~= 1 then
         vim.notify(
@@ -78,12 +78,12 @@ function M.build_nvr_git_editor()
     return M.compact_join(parts)
 end
 
----@return boolean available True if lazygit command exists
+--- @return boolean available True if lazygit command exists
 function M.has_lazygit() return vim.fn.executable("lazygit") == 1 end
 
 --- Get the default lazygit config file path.
 --- Queries lazygit for its config directory and appends config.yml.
----@return string path Absolute path to the default config file
+--- @return string path Absolute path to the default config file
 function M.get_default_config_path()
     local result = vim.system({ "lazygit", "-cd" }, { text = true }):wait()
     return vim.trim(result.stdout) .. "/config.yml"
@@ -91,8 +91,8 @@ end
 
 --- Get the lazygit configuration template content.
 --- Calls `lazygit -c` to retrieve the default config for new files.
----@return string[]? lines Config file lines, or nil on error
----@return string? error Error message if retrieval failed
+--- @return string[]? lines Config file lines, or nil on error
+--- @return string? error Error message if retrieval failed
 function M.get_config_template()
     local result = vim.system({ "lazygit", "-c" }, { text = true }):wait()
 
