@@ -1,4 +1,4 @@
----@module "lazygit.git"
+--- @module "lazygit.git"
 ---
 --- Git repository utilities for lazygit.nvim plugin.
 --- Provides repository detection, root finding, and visited repos tracking.
@@ -11,12 +11,12 @@ local M = {}
 
 --- List of git repository paths visited during this Neovim session.
 --- Used by the telescope extension to offer quick repo switching.
----@type string[]
+--- @type string[]
 M.visited_repos = {}
 
 --- Add a git repository path to the visited repos list.
 --- Validates the path is a git repo and avoids duplicates.
----@param repo_path string? Path to add (must be a valid git repo)
+--- @param repo_path string? Path to add (must be a valid git repo)
 function M.append_visited(repo_path)
     if not repo_path or not M.is_repo_or_child(repo_path) then
         return
@@ -35,8 +35,8 @@ end
 
 --- Check if a path is inside a git repository.
 --- Handles both file and directory paths.
----@param path string Path to check (file or directory)
----@return boolean is_repo True if path is inside a git work tree
+--- @param path string Path to check (file or directory)
+--- @return boolean is_repo True if path is inside a git work tree
 function M.is_repo_or_child(path)
     local clean_path = vim.fs.normalize(path)
 
@@ -55,8 +55,8 @@ function M.is_repo_or_child(path)
 end
 
 --- Get the git repository root for a given directory.
----@param cwd string? Directory to start search from (defaults to current directory)
----@return string? root Absolute path to git root, or nil if not in a repo
+--- @param cwd string? Directory to start search from (defaults to current directory)
+--- @return string? root Absolute path to git root, or nil if not in a repo
 function M.get_git_root(cwd)
     local result = vim.system({ "git", "rev-parse", "--show-toplevel" }, {
         cwd = cwd,
@@ -72,11 +72,11 @@ end
 
 --- Find the project root directory for the current context.
 --- Tries Neovim's cwd first, then falls back to current buffer's directory.
----@return string? root Git root path, or nil if not in a repository
+--- @return string? root Git root path, or nil if not in a repository
 function M.get_workspace_root()
-    ---@type string
+--- @type string
     local cwd
-    ---@type string?
+--- @type string?
     local cwd_git_root
 
     -- Detect Git repo from NeoVim CWD
@@ -105,8 +105,8 @@ end
 
 --- Resolve the git repository root path for lazygit.
 --- Checks hint path, symlink resolution, and project root in order.
----@param hint string? Optional directory hint (e.g. from current file)
----@return string? root Git root path, or nil if not in a repository
+--- @param hint string? Optional directory hint (e.g. from current file)
+--- @return string? root Git root path, or nil if not in a repository
 function M.resolve_work_path(hint)
     -- Explicit hint from a caller that already knows the target repo
     if hint then

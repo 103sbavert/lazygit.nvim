@@ -1,4 +1,4 @@
----@module "lazygit"
+--- @module "lazygit"
 ---
 --- Main entry point for lazygit.nvim plugin.
 --- Provides commands to open lazygit in a floating terminal window.
@@ -13,36 +13,36 @@ local lg_buf_cleanup_augrp =
     vim.api.nvim_create_augroup("LazyGit_BufCleanup", { clear = true })
 
 --- Buffer ID for the lazygit terminal. Shared with window.lua.
----@type integer?
+--- @type integer?
 vim.g.lazygit_buf_id = nil
 
 --- Vim global flag indicating if the lazygit process is running.
----@type boolean
+--- @type boolean
 vim.g.lazygit_opened = false
 
 --- Window ID of the lazygit floating window.
----@type integer?
+--- @type integer?
 vim.g.lazygit_win_id = nil
 
 --- Cached GIT_EDITOR string built from nvr_opts on setup.
 --- Can be overridden by the user after setup.
----@type string?
+--- @type string?
 vim.g.lazygit_editor_cmd = nil
 
 --- Window ID of the window that was focused before opening lazygit.
----@type integer?
+--- @type integer?
 local prev_win = nil
 
 -- [[ Notifications Helpers ]]
 
 --- Display an error notification.
----@param msg string The error message to display
+--- @param msg string The error message to display
 local function notify_err(msg)
     vim.notify(msg, vim.log.levels.ERROR, { title = "LazyGit" })
 end
 
 --- Display a warning notification.
----@param msg string The warning message to display
+--- @param msg string The warning message to display
 local function notify_warn(msg)
     vim.notify(msg, vim.log.levels.WARN, { title = "LazyGit" })
 end
@@ -51,7 +51,7 @@ end
 
 --- Check if lazygit executable is available on the system.
 --- Shows error notification if not found.
----@return boolean available True if lazygit is found in PATH
+--- @return boolean available True if lazygit is found in PATH
 local function has_lazygit()
     if not internal.has_lazygit() then
         notify_err("lazygit not found. See :h lazygit for installation.")
@@ -62,7 +62,7 @@ end
 
 --- Append -ucf flag to command if custom config is configured.
 --- Mutates the provided command table in place.
----@param cmd string[] Command arguments table to mutate
+--- @param cmd string[] Command arguments table to mutate
 local function inject_config_flags(cmd)
     if not config.has_custom_config() then
         return
@@ -94,8 +94,8 @@ end
 
 --- Inject path flags (-p/-w/-g) into command based on environment and context.
 --- Mutates the provided command table in place.
----@param cmd string[] Command arguments table to mutate
----@param hint string? Optional directory hint for path resolution
+--- @param cmd string[] Command arguments table to mutate
+--- @param hint string? Optional directory hint for path resolution
 local function inject_path_flags(cmd, hint)
     -- GIT_DIR/GIT_WORK_TREE override everything
     if vim.env.GIT_DIR and vim.env.GIT_WORK_TREE then
@@ -115,7 +115,7 @@ end
 
 --- Callback when lazygit terminal job exits.
 --- Cleans up window, buffer, and state. Triggers checktime on success.
----@param code integer Exit code from lazygit process
+--- @param code integer Exit code from lazygit process
 local function on_exit(code)
     -- Capture to prevent acting on other instances
     local buf_id = vim.g.lazygit_buf_id
@@ -146,7 +146,7 @@ end
 
 --- Execute lazygit command in the terminal buffer.
 --- Prevents duplicate execution via LAZYGIT_LOADED flag.
----@param cmd string[] Full command with arguments to execute
+--- @param cmd string[] Full command with arguments to execute
 local function exec_lazygit_command(cmd)
     if vim.g.lazygit_opened then
         vim.cmd.startinsert()
@@ -178,7 +178,7 @@ end
 
 --- Open a new lazygit session.
 --- Saves current window, opens floating window, and starts lazygit.
----@param cmd string[] Full command with arguments to execute
+--- @param cmd string[] Full command with arguments to execute
 local function open_session(cmd)
     local is_new_buf = not vim.g.lazygit_buf_id
         or not vim.api.nvim_buf_is_valid(vim.g.lazygit_buf_id)
@@ -211,7 +211,7 @@ end
 
 --- Open lazygit in a floating window.
 --- Command: :LazyGit
----@param path string? Optional path to git repository
+--- @param path string? Optional path to git repository
 local function lazygit(path)
     if not has_lazygit() then
         return
@@ -224,7 +224,7 @@ end
 
 --- Open lazygit log view in a floating window.
 --- Command: :LazyGitLog
----@param path string? Optional path to git repository
+--- @param path string? Optional path to git repository
 local function lazygitlog(path)
     if not has_lazygit() then
         return
@@ -250,8 +250,8 @@ end
 
 --- Open lazygit filtered to a specific path.
 --- Command: :LazyGitFilter
----@param path string? Path to filter (defaults to project root)
----@param git_root string? Git repository root path
+--- @param path string? Path to filter (defaults to project root)
+--- @param git_root string? Git repository root path
 local function lazygitfilter(path, git_root)
     if not has_lazygit() then
         return
@@ -298,7 +298,7 @@ end
 
 --- Open or create a config file at the given path.
 --- If file doesn't exist, prompts user and populates with defaults.
----@param path string Path to config file
+--- @param path string Path to config file
 local function open_config_file(path)
     local clean_path = vim.fs.normalize(path)
 
@@ -380,7 +380,7 @@ local function lazygitconfig()
 end
 
 --- Configure the plugin and cache the nvr GIT_EDITOR string.
----@param opts LazyGitConfig? User configuration options
+--- @param opts LazyGitConfig? User configuration options
 local function setup(opts)
     config.setup(opts)
     vim.g.lazygit_editor_cmd = config.options.neovim_remote
@@ -388,14 +388,14 @@ local function setup(opts)
         or nil
 end
 
----@class LazyGitModule
----@field setup fun(opts: LazyGitConfig?) Configure the plugin
----@field lazygit fun(path: string?) Open lazygit
----@field lazygitlog fun(path: string?) Open lazygit log
----@field lazygitcurrentfile fun() Open lazygit for current file
----@field lazygitfilter fun(path: string?, git_root: string?) Open lazygit filtered
----@field lazygitfiltercurrentfile fun() Open lazygit filtered to current file
----@field lazygitconfig fun() Open lazygit config
+--- @class LazyGitModule
+--- @field setup fun(opts: LazyGitConfig?) Configure the plugin
+--- @field lazygit fun(path: string?) Open lazygit
+--- @field lazygitlog fun(path: string?) Open lazygit log
+--- @field lazygitcurrentfile fun() Open lazygit for current file
+--- @field lazygitfilter fun(path: string?, git_root: string?) Open lazygit filtered
+--- @field lazygitfiltercurrentfile fun() Open lazygit filtered to current file
+--- @field lazygitconfig fun() Open lazygit config
 return {
     setup = setup,
     lazygit = lazygit,

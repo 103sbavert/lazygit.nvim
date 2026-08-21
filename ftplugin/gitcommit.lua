@@ -1,4 +1,4 @@
----@module "ftplugin.gitcommit"
+--- @module "ftplugin.gitcommit"
 ---
 --- Filetype plugin for gitcommit buffers in lazygit.nvim.
 --- Enables neovim-remote integration for editing commits from lazygit.
@@ -23,7 +23,7 @@ end
 vim.bo.bufhidden = "wipe"
 
 --- Autocmd group for neovim-remote integration.
----@type integer
+--- @type integer
 local group =
     vim.api.nvim_create_augroup("lazygit_neovim_remote", { clear = true })
 
