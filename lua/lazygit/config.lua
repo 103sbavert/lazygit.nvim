@@ -14,9 +14,16 @@ local M = {}
 ---@field winblend integer? Transparency (0=opaque, 100=transparent)
 ---@field border string[]? Border characters: top-left, top, top-right, right, bottom-right, bottom, bottom-left, left
 
+---@class LazyGitNvrOpts
+---@field ["--remote"] string? Remote mode suffix (e.g. "-wait")
+---@field ["-cc"] string|string[]? Commands executed before file opens
+---@field ["-c"] string|string[]? Commands executed after file opens
+---@field ["+"] string|string[]? Commands executed after file opens (vim + syntax)
+
 ---@class LazyGitConfig
 ---@field floating_window LazyGitFloatingWindowConfig? Floating window appearance
 ---@field neovim_remote boolean? Use nvr for commit editing integration
+---@field nvr_opts LazyGitNvrOpts? Options passed to nvr when building GIT_EDITOR
 ---@field config_file_path string|string[]? Custom lazygit config path(s) — empty string or empty table uses default
 ---@field on_exit_callback fun()? Called after lazygit exits successfully
 
@@ -34,6 +41,10 @@ local defaults = {
         border = nil,
     },
     neovim_remote = vim.fn.executable("nvr") == 1,
+    nvr_opts = {
+        ["--remote"] = "-wait",
+        ["-cc"] = { "close", "split" },
+    },
     config_file_path = "",
     on_exit_callback = nil,
 }

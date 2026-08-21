@@ -9,28 +9,29 @@ local git = require("lazygit.git")
 local internal = require("lazygit.internal")
 local open_floating_window = require("lazygit.window").open_floating_window
 
+local lg_buf_cleanup_augrp =
+    vim.api.nvim_create_augroup("LazyGit_BufCleanup", { clear = true })
+
 --- Buffer ID for the lazygit terminal. Shared with window.lua.
 ---@type integer?
-LAZYGIT_BUFFER = nil
+vim.g.lazygit_buf_id = nil
 
---- Whether lazygit is currently loaded in the buffer. Shared with window.lua.
+--- Vim global flag indicating if the lazygit process is running.
 ---@type boolean
-LAZYGIT_LOADED = false
-
---- Vim global flag indicating lazygit window is open (for ftplugin integration).
-vim.g.lazygit_opened = 0
-
---- Window ID of the window that was focused before opening lazygit.
----@type integer
-local prev_win = -1
+vim.g.lazygit_opened = false
 
 --- Window ID of the lazygit floating window.
----@type integer
-local win = -1
+---@type integer?
+vim.g.lazygit_win_id = nil
 
---- Buffer ID of the lazygit terminal buffer (local reference).
----@type integer
-local buffer = -1
+--- Cached GIT_EDITOR string built from nvr_opts on setup.
+--- Can be overridden by the user after setup.
+---@type string?
+vim.g.lazygit_editor_cmd = nil
+
+--- Window ID of the window that was focused before opening lazygit.
+---@type integer?
+local prev_win = nil
 
 -- [[ Notifications Helpers ]]
 
@@ -116,23 +117,26 @@ end
 --- Cleans up window, buffer, and state. Triggers checktime on success.
 ---@param code integer Exit code from lazygit process
 local function on_exit(code)
-    LAZYGIT_BUFFER = nil
-    LAZYGIT_LOADED = false
-    vim.g.lazygit_opened = 0
+    -- Capture to prevent acting on other instances
+    local buf_id = vim.g.lazygit_buf_id
+    local win_id = vim.g.lazygit_win_id
+    local prev_win_id = prev_win
+
+    vim.g.lazygit_opened = false
 
     vim.cmd("silent! checktime")
 
-    if vim.api.nvim_win_is_valid(win) then
-        vim.api.nvim_win_close(win, true)
+    if win_id and vim.api.nvim_win_is_valid(win_id) then
+        vim.api.nvim_win_close(win_id, true)
     end
-    if vim.api.nvim_win_is_valid(prev_win) then
-        vim.api.nvim_set_current_win(prev_win)
+    if prev_win_id and vim.api.nvim_win_is_valid(prev_win_id) then
+        vim.api.nvim_set_current_win(prev_win_id)
     end
-    if vim.api.nvim_buf_is_valid(buffer) then
-        vim.api.nvim_buf_delete(buffer, { force = true })
+    if buf_id and vim.api.nvim_buf_is_valid(buf_id) then
+        vim.api.nvim_buf_delete(buf_id, { force = true })
     end
 
-    prev_win, win, buffer = -1, -1, -1
+    prev_win, vim.g.lazygit_win_id, vim.g.lazygit_buf_id = nil, nil, nil
 
     local on_exit_callback = config.options.on_exit_callback
     if code == 0 and on_exit_callback and vim.is_callable(on_exit_callback) then
@@ -144,20 +148,30 @@ end
 --- Prevents duplicate execution via LAZYGIT_LOADED flag.
 ---@param cmd string[] Full command with arguments to execute
 local function exec_lazygit_command(cmd)
-    if LAZYGIT_LOADED then
+    if vim.g.lazygit_opened then
         vim.cmd.startinsert()
         return
     end
 
     -- Set immediately to prevent race on rapid calls
-    LAZYGIT_LOADED = true
-    vim.g.lazygit_opened = 1
+    vim.g.lazygit_opened = true
 
     vim.schedule(function()
-        vim.fn.jobstart(
-            cmd,
-            { term = true, on_exit = function(_, code, _) on_exit(code) end }
-        )
+        local job_opts = {
+            term = true,
+            on_exit = function(_, code, _) on_exit(code) end,
+        }
+
+        if vim.g.lazygit_editor_cmd then
+            job_opts.env = { GIT_EDITOR = vim.g.lazygit_editor_cmd }
+        end
+
+        local ch_id = vim.fn.jobstart(cmd, job_opts)
+
+        if not ch_id or ch_id <= 0 then
+            vim.g.lazygit_opened = false
+        end
+
         vim.cmd.startinsert()
     end)
 end
@@ -166,8 +180,32 @@ end
 --- Saves current window, opens floating window, and starts lazygit.
 ---@param cmd string[] Full command with arguments to execute
 local function open_session(cmd)
+    local is_new_buf = not vim.g.lazygit_buf_id
+        or not vim.api.nvim_buf_is_valid(vim.g.lazygit_buf_id)
+
     prev_win = vim.api.nvim_get_current_win()
-    win, buffer = open_floating_window()
+    local ret_win, ret_buf = open_floating_window()
+
+    if ret_win == -1 or ret_buf == -1 then
+        notify_err("FATAL: LazyGit could not be initialized")
+        return
+    end
+
+    vim.g.lazygit_buf_id, vim.g.lazygit_win_id = ret_buf, ret_win
+
+    if is_new_buf then
+        vim.api.nvim_create_autocmd("BufHidden", {
+            group = lg_buf_cleanup_augrp,
+            buffer = ret_buf,
+            callback = function() vim.g.lazygit_win_id = nil end,
+        })
+        vim.api.nvim_create_autocmd("BufDelete", {
+            group = lg_buf_cleanup_augrp,
+            buffer = ret_buf,
+            callback = function() vim.g.lazygit_buf_id = nil end,
+        })
+    end
+
     exec_lazygit_command(cmd)
 end
 
@@ -341,6 +379,15 @@ local function lazygitconfig()
     end
 end
 
+--- Configure the plugin and cache the nvr GIT_EDITOR string.
+---@param opts LazyGitConfig? User configuration options
+local function setup(opts)
+    config.setup(opts)
+    vim.g.lazygit_editor_cmd = config.options.neovim_remote
+        and internal.build_nvr_git_editor()
+        or nil
+end
+
 ---@class LazyGitModule
 ---@field setup fun(opts: LazyGitConfig?) Configure the plugin
 ---@field lazygit fun(path: string?) Open lazygit
@@ -349,10 +396,8 @@ end
 ---@field lazygitfilter fun(path: string?, git_root: string?) Open lazygit filtered
 ---@field lazygitfiltercurrentfile fun() Open lazygit filtered to current file
 ---@field lazygitconfig fun() Open lazygit config
----@field get_workspace_root fun(): string? Get workspace/project root directory
-
 return {
-    setup = config.setup,
+    setup = setup,
     lazygit = lazygit,
     lazygitlog = lazygitlog,
     lazygitcurrentfile = lazygitcurrentfile,

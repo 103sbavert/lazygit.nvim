@@ -6,13 +6,10 @@
 --- When lazygit opens a commit editor via nvr, this sets up an autocmd
 --- to reopen lazygit after the commit buffer is closed.
 
--- Guard: only run if lazygit is currently open
-if not vim.g.lazygit_opened or vim.g.lazygit_opened == 0 then
-    return
-end
-
--- Guard: only run if nvr is available
-if vim.fn.executable("nvr") ~= 1 then
+if
+    not vim.g.lazygit_buf_id
+    or not vim.api.nvim_buf_is_valid(vim.g.lazygit_buf_id)
+then
     return
 end
 
@@ -22,6 +19,9 @@ if not config.options.neovim_remote then
     return
 end
 
+-- Ensure buffer is wiped on close so nvr --remote-wait unblocks via BufDelete.
+vim.bo.bufhidden = "wipe"
+
 --- Autocmd group for neovim-remote integration.
 ---@type integer
 local group =
@@ -29,12 +29,23 @@ local group =
 
 --- Reopen lazygit when commit buffer is closed.
 --- This enables seamless editing workflow: lazygit -> edit commit -> lazygit
-vim.api.nvim_create_autocmd("BufUnload", {
+vim.api.nvim_create_autocmd("BufDelete", {
     group = group,
     buffer = 0,
     callback = function()
         local root = require("lazygit.git").get_workspace_root()
-        vim.g.lazygit_opened = 0
-        vim.schedule(function() require("lazygit").lazygit(root) end)
+        vim.schedule(function()
+            local buf_id = vim.g.lazygit_buf_id
+
+            --Check again when actually restoring the Window
+            if buf_id and vim.api.nvim_buf_is_valid(buf_id) then
+                require("lazygit").lazygit(root)
+
+                local channel = vim.bo[buf_id].channel
+                if channel and channel > 0 then
+                    vim.api.nvim_chan_send(channel, "\r")
+                end
+            end
+        end)
     end,
 })
